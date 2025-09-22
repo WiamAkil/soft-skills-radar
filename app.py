@@ -2,7 +2,11 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import os
+import io
 import plotly.graph_objects as go
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.pagesizes import A4
 
 # ---------- Page setup ----------
 st.set_page_config(page_title="Soft Skills Assessment Quiz", page_icon="🧭", layout="centered")
@@ -15,6 +19,16 @@ SKILLS = {
     "Confiance": "🔒",
     "Intelligence émotionnelle": "💖",
     "Agilité": "⚡"
+}
+
+# Explanation texts for PDF
+EXPLANATIONS = {
+    "Empathie": "Tu comprends les autres et sais te mettre à leur place.",
+    "Pensée critique": "Tu analyses, questionnes et prends des décisions rationnelles.",
+    "Adaptabilité": "Tu es flexible et sais rebondir face aux imprévus.",
+    "Confiance": "On peut compter sur toi, tu inspires la fiabilité.",
+    "Intelligence émotionnelle": "Tu gères tes émotions et celles des autres avec finesse.",
+    "Agilité": "Tu agis vite, tu prends des initiatives et tu avances."
 }
 
 # ---------- Questions ----------
@@ -129,7 +143,32 @@ if "answers" not in st.session_state:
 if "info" not in st.session_state:
     st.session_state.info = {}
 
-# ---------- Welcome / Info page ----------
+# ---------- PDF Generator ----------
+def generate_pdf(name, email, scores, top_skill, emoji, chart_file):
+    file_path = f"report_{name.replace(' ', '_')}.pdf"
+    doc = SimpleDocTemplate(file_path, pagesize=A4)
+    styles = getSampleStyleSheet()
+    story = []
+
+    story.append(Paragraph("<b>Soft Skills Report</b>", styles['Title']))
+    story.append(Spacer(1, 12))
+    story.append(Paragraph(f"Nom: {name}", styles['Normal']))
+    story.append(Paragraph(f"Email: {email}", styles['Normal']))
+    story.append(Spacer(1, 12))
+
+    story.append(Paragraph(f"🏆 Ton atout majeur: {emoji} {top_skill}", styles['Heading2']))
+    story.append(Spacer(1, 6))
+    story.append(Paragraph(EXPLANATIONS[top_skill], styles['Normal']))
+    story.append(Spacer(1, 12))
+
+    # Radar chart image
+    story.append(Image(chart_file, width=400, height=400))
+    story.append(Spacer(1, 12))
+
+    doc.build(story)
+    return file_path
+
+# ---------- Welcome ----------
 if st.session_state.page == -1:
     st.title("🧭 Soft Skills Assessment Quiz")
     st.write("Réponds à 10 scénarios amusants et découvre ton **profil soft skills** à la fin.")
@@ -151,8 +190,6 @@ if st.session_state.page == -1:
 # ---------- Questions ----------
 elif st.session_state.page < len(QUESTIONS):
     q = QUESTIONS[st.session_state.page]
-
-    # Progress bar
     progress = (st.session_state.page) / len(QUESTIONS)
     st.progress(progress)
 
@@ -186,10 +223,7 @@ else:
                 if opt_text == chosen:
                     raw_counts[skill] += 1
 
-    scores = {
-        s: round(5 * raw_counts[s] / total_per_skill[s], 2) if total_per_skill[s] else 0
-        for s in SKILLS
-    }
+    scores = {s: round(100 * raw_counts[s] / total_per_skill[s], 1) if total_per_skill[s] else 0 for s in SKILLS}
 
     # Dominant skill
     top_skill = max(scores, key=scores.get)
@@ -200,74 +234,57 @@ else:
         f"Bravo {st.session_state.info['name']} — voici ton profil 👇"
     )
 
-    # ---------- Fancy Radar with Plotly ----------
+    # ---------- Multi-Colored Radar ----------
+    colors = {
+        "Empathie": "#FF6F61",
+        "Pensée critique": "#6A5ACD",
+        "Adaptabilité": "#20B2AA",
+        "Confiance": "#FFD700",
+        "Intelligence émotionnelle": "#FF69B4",
+        "Agilité": "#00CED1"
+    }
+
     labels = list(SKILLS.keys())
     vals = [scores[s] for s in labels]
     vals += vals[:1]
 
-    colors = ["#FF6F61", "#6A5ACD", "#20B2AA", "#FFD700", "#FF69B4", "#00CED1"]
-
     fig = go.Figure()
-
     fig.add_trace(go.Scatterpolar(
         r=vals,
         theta=labels + [labels[0]],
         fill='toself',
-        name='Profil',
-        line=dict(color="black", width=2),
-        fillcolor='rgba(255, 105, 180, 0.3)'
+        line=dict(color='black', width=2),
+        fillcolor='rgba(255, 182, 193, 0.3)'
     ))
 
-    # Customize layout
+    for skill, val in scores.items():
+        fig.add_trace(go.Scatterpolar(
+            r=[val],
+            theta=[skill],
+            mode="markers",
+            marker=dict(size=14, color=colors[skill]),
+            name=f"{skill}: {val}%"
+        ))
+
     fig.update_layout(
         polar=dict(
-            bgcolor="#f9f9f9",
-            radialaxis=dict(
-                visible=True,
-                range=[0, 5],
-                showline=True,
-                linewidth=1,
-                gridcolor="lightgray",
-                tickfont=dict(size=12, color="black")
-            ),
-            angularaxis=dict(
-                tickfont=dict(size=14, color="black")
-            )
+            radialaxis=dict(visible=True, range=[0, 100]),
+            angularaxis=dict(tickfont=dict(size=13))
         ),
-        showlegend=False,
-        title=dict(
-            text="🌟 Ton radar des soft skills",
-            font=dict(size=22, color="black", family="Arial Black"),
-            x=0.5
-        )
+        showlegend=True,
+        title="🌟 Ton radar multicolore des soft skills"
     )
-
-    # Color labels individually
-    for i, label in enumerate(labels):
-        fig.add_annotation(
-            x=0, y=0,
-            text=f"<b><span style='color:{colors[i]}'>{label}</span></b>",
-            showarrow=False,
-            xref="paper", yref="paper"
-        )
 
     st.plotly_chart(fig, use_container_width=True)
 
-    # Save results to Excel
-    df_new = pd.DataFrame([{
-        "Nom": st.session_state.info["name"],
-        "Email": st.session_state.info["email"],
-        "Département": st.session_state.info["dept"],
-        **scores
-    }])
+    # Save chart as image for PDF
+    chart_file = "radar.png"
+    fig.write_image(chart_file)
 
-    file_path = "results.xlsx"
-    if os.path.exists(file_path):
-        df_existing = pd.read_excel(file_path)
-        df_all = pd.concat([df_existing, df_new], ignore_index=True)
-    else:
-        df_all = df_new
-    df_all.to_excel(file_path, index=False)
+    # Generate PDF
+    pdf_file = generate_pdf(st.session_state.info["name"], st.session_state.info["email"], scores, top_skill, emoji, chart_file)
+    with open(pdf_file, "rb") as f:
+        st.download_button("⬇️ Télécharger ton rapport PDF", f, file_name=pdf_file, mime="application/pdf")
 
     if st.button("🔁 Refaire le test"):
         st.session_state.page = -1
