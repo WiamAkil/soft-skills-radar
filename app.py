@@ -6,7 +6,7 @@ import pandas as pd
 import os
 
 # ---------- Page setup ----------
-st.set_page_config(page_title="Quiz Soft Skills Mystère", page_icon="🎭", layout="centered")
+st.set_page_config(page_title="Soft Skills Assessment Quiz", page_icon="🧭", layout="centered")
 
 # ---------- Soft skills + emojis ----------
 SKILLS = {
@@ -132,7 +132,7 @@ if "info" not in st.session_state:
 
 # ---------- Welcome / Info page ----------
 if st.session_state.page == -1:
-    st.title("🎭 Quiz Mystère des Soft Skills")
+    st.title("🧭 Soft Skills Assessment Quiz")
     st.write("Réponds à 10 scénarios amusants et découvre ton **profil soft skills** à la fin.")
 
     with st.form("userinfo"):
@@ -168,7 +168,7 @@ elif st.session_state.page < len(QUESTIONS):
 
 # ---------- Results ----------
 else:
-    st.success("✨ Voici ton profil mystère !")
+    st.success("✨ Voici ton profil !")
 
     # Count scores
     raw_counts = {s: 0 for s in SKILLS}
@@ -193,18 +193,18 @@ else:
 
     st.markdown(
         f"## 🏆 Ton atout majeur : **{emoji} {top_skill}**\n"
-        f"Bravo {st.session_state.info['name']} — ton radar complet est ci-dessous 👇"
+        f"Bravo {st.session_state.info['name']} — voici ton profil 👇"
     )
 
-    # Radar chart
-    labels = [f"{emoji} {s}" for s, emoji in SKILLS.items()]
+    # Radar chart (labels = mots simples)
+    labels = list(SKILLS.keys())
     vals = [scores[s] for s in SKILLS]
     vals += vals[:1]
     angles = np.linspace(0, 2 * np.pi, len(labels) + 1)
 
     fig, ax = plt.subplots(figsize=(7, 7), subplot_kw=dict(polar=True))
     ax.plot(angles, vals, marker="o", linewidth=3, color="#FF6F61")
-    ax.fill(angles, vals, color="#FF6F61", alpha=0.25)
+    ax.fill(angles, vals, color="#FF6F61", alpha=0.3)
     ax.set_xticks(angles[:-1])
     ax.set_xticklabels(labels, fontsize=12, weight="bold")
     ax.set_ylim(0, 5)
@@ -228,6 +228,7 @@ else:
         df_all = df_new
     df_all.to_excel(file_path, index=False)
 
+    # Download chart
     buf = io.BytesIO()
     fig.savefig(buf, format="png", dpi=180, bbox_inches="tight")
     st.download_button(
