@@ -2,9 +2,11 @@ import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 import io
+import pandas as pd
+import os
 
-# ---------- Configuration de la page ----------
-st.set_page_config(page_title="Quiz Soft Skills", page_icon="🎭", layout="centered")
+# ---------- Page setup ----------
+st.set_page_config(page_title="Quiz Soft Skills Mystère", page_icon="🎭", layout="centered")
 
 # ---------- Soft skills + emojis ----------
 SKILLS = {
@@ -16,7 +18,7 @@ SKILLS = {
     "Agilité": "⚡"
 }
 
-# ---------- Questions (sans mention de soft skills) ----------
+# ---------- Questions ----------
 QUESTIONS = [
     {
         "id": 1,
@@ -120,25 +122,35 @@ QUESTIONS = [
     },
 ]
 
-# ---------- Initialisation ----------
+# ---------- State ----------
 if "page" not in st.session_state:
-    st.session_state.page = 0
+    st.session_state.page = -1  # -1 = welcome page
 if "answers" not in st.session_state:
     st.session_state.answers = {}
-if "name" not in st.session_state:
-    st.session_state.name = ""
+if "info" not in st.session_state:
+    st.session_state.info = {}
 
-# ---------- Sidebar ----------
-with st.sidebar:
-    st.header("Quiz mystère 🎭")
-    st.write("Réponds instinctivement aux scénarios. À la fin, découvre ton **radar des soft skills**.")
-    st.text_input("Ton prénom ou pseudo (optionnel)", key="name")
-    st.progress(st.session_state.page / max(1, len(QUESTIONS)))
+# ---------- Welcome / Info page ----------
+if st.session_state.page == -1:
+    st.title("🎭 Quiz Mystère des Soft Skills")
+    st.write("Réponds à 10 scénarios amusants et découvre ton **profil soft skills** à la fin.")
 
-# ---------- Corps principal ----------
-st.title("Quiz Soft Skills Mystère 🌌")
+    with st.form("userinfo"):
+        name = st.text_input("Prénom et Nom")
+        email = st.text_input("Adresse e-mail")
+        dept = st.text_input("Équipe / Département (optionnel)")
+        start = st.form_submit_button("🚀 Commencer le quiz")
 
-if st.session_state.page < len(QUESTIONS):
+        if start:
+            if not name or not email:
+                st.error("Merci de remplir au minimum **Nom + Email**.")
+            else:
+                st.session_state.info = {"name": name, "email": email, "dept": dept}
+                st.session_state.page = 0
+                st.rerun()
+
+# ---------- Questions ----------
+elif st.session_state.page < len(QUESTIONS):
     q = QUESTIONS[st.session_state.page]
     st.subheader(f"Question {st.session_state.page+1} / {len(QUESTIONS)}")
     st.write(q["text"])
@@ -150,22 +162,20 @@ if st.session_state.page < len(QUESTIONS):
             st.rerun()
 
     if st.session_state.page > 0:
-        if st.button("⬅️ Revenir à la question précédente"):
+        if st.button("⬅️ Retour"):
             st.session_state.page -= 1
             st.rerun()
 
+# ---------- Results ----------
 else:
-    # ---------- Résultats ----------
-    st.success("✨ Résultats : voici ton radar des soft skills !")
+    st.success("✨ Voici ton profil mystère !")
 
-    # Compter les réponses
+    # Count scores
     raw_counts = {s: 0 for s in SKILLS}
-    skill_occurrences = {s: 0 for s in SKILLS}
-
+    total_per_skill = {s: 0 for s in SKILLS}
     for q in QUESTIONS:
         for _, skill in q["options"]:
-            skill_occurrences[skill] += 1
-
+            total_per_skill[skill] += 1
         chosen = st.session_state.answers.get(q["id"])
         if chosen:
             for opt_text, skill in q["options"]:
@@ -173,15 +183,18 @@ else:
                     raw_counts[skill] += 1
 
     scores = {
-        s: round(5 * raw_counts[s] / skill_occurrences[s], 2) if skill_occurrences[s] else 0
+        s: round(5 * raw_counts[s] / total_per_skill[s], 2) if total_per_skill[s] else 0
         for s in SKILLS
     }
 
-    col1, col2 = st.columns([1,1])
+    # Dominant skill
+    top_skill = max(scores, key=scores.get)
+    emoji = SKILLS[top_skill]
 
-    with col1:
-        st.write("### Tes scores (0–5)")
-        st.json(scores)
+    st.markdown(
+        f"## 🏆 Ton atout majeur : **{emoji} {top_skill}**\n"
+        f"Bravo {st.session_state.info['name']} — ton radar complet est ci-dessous 👇"
+    )
 
     # Radar chart
     labels = [f"{emoji} {s}" for s, emoji in SKILLS.items()]
@@ -189,28 +202,43 @@ else:
     vals += vals[:1]
     angles = np.linspace(0, 2 * np.pi, len(labels) + 1)
 
-    fig, ax = plt.subplots(figsize=(7,7), subplot_kw=dict(polar=True))
+    fig, ax = plt.subplots(figsize=(7, 7), subplot_kw=dict(polar=True))
     ax.plot(angles, vals, marker="o", linewidth=3, color="#FF6F61")
-    ax.fill(angles, vals, color="#FF6F61", alpha=0.3)
+    ax.fill(angles, vals, color="#FF6F61", alpha=0.25)
     ax.set_xticks(angles[:-1])
     ax.set_xticklabels(labels, fontsize=12, weight="bold")
-    ax.set_ylim(0,5)
-    ax.set_title(f"Radar des soft skills de {(st.session_state.name or 'toi')} 🌟", pad=20, fontsize=16, weight="bold")
+    ax.set_ylim(0, 5)
+    ax.set_title("🌟 Ton radar des soft skills", pad=20, fontsize=16, weight="bold")
 
-    with col2:
-        st.pyplot(fig, clear_figure=True)
+    st.pyplot(fig, clear_figure=True)
+
+    # Save results to Excel
+    df_new = pd.DataFrame([{
+        "Nom": st.session_state.info["name"],
+        "Email": st.session_state.info["email"],
+        "Département": st.session_state.info["dept"],
+        **scores
+    }])
+
+    file_path = "results.xlsx"
+    if os.path.exists(file_path):
+        df_existing = pd.read_excel(file_path)
+        df_all = pd.concat([df_existing, df_new], ignore_index=True)
+    else:
+        df_all = df_new
+    df_all.to_excel(file_path, index=False)
 
     buf = io.BytesIO()
     fig.savefig(buf, format="png", dpi=180, bbox_inches="tight")
     st.download_button(
         "⬇️ Télécharger ton radar (PNG)",
         data=buf.getvalue(),
-        file_name=f"radar_soft_skills_{(st.session_state.name or 'profil')}.png",
+        file_name=f"radar_soft_skills_{st.session_state.info['name'].replace(' ', '_')}.png",
         mime="image/png",
     )
 
     if st.button("🔁 Refaire le test"):
-        st.session_state.page = 0
+        st.session_state.page = -1
         st.session_state.answers = {}
+        st.session_state.info = {}
         st.rerun()
-
