@@ -1,9 +1,9 @@
 import streamlit as st
 import numpy as np
-import matplotlib.pyplot as plt
-import io
 import pandas as pd
 import os
+import io
+import plotly.graph_objects as go
 
 # ---------- Page setup ----------
 st.set_page_config(page_title="Soft Skills Assessment Quiz", page_icon="🧭", layout="centered")
@@ -196,21 +196,46 @@ else:
         f"Bravo {st.session_state.info['name']} — voici ton profil 👇"
     )
 
-    # Radar chart (labels = mots simples)
+    # ---------- Fancy Radar with Plotly ----------
     labels = list(SKILLS.keys())
-    vals = [scores[s] for s in SKILLS]
+    vals = [scores[s] for s in labels]
     vals += vals[:1]
-    angles = np.linspace(0, 2 * np.pi, len(labels) + 1)
 
-    fig, ax = plt.subplots(figsize=(7, 7), subplot_kw=dict(polar=True))
-    ax.plot(angles, vals, marker="o", linewidth=3, color="#FF6F61")
-    ax.fill(angles, vals, color="#FF6F61", alpha=0.3)
-    ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(labels, fontsize=12, weight="bold")
-    ax.set_ylim(0, 5)
-    ax.set_title("🌟 Ton radar des soft skills", pad=20, fontsize=16, weight="bold")
+    fig = go.Figure()
 
-    st.pyplot(fig, clear_figure=True)
+    fig.add_trace(go.Scatterpolar(
+        r=vals,
+        theta=labels + [labels[0]],
+        fill='toself',
+        name='Profil',
+        line=dict(color='firebrick', width=3),
+        fillcolor='rgba(255, 111, 97, 0.4)'
+    ))
+
+    fig.update_layout(
+        polar=dict(
+            bgcolor="#f9f9f9",
+            radialaxis=dict(
+                visible=True,
+                range=[0, 5],
+                showline=True,
+                linewidth=1,
+                gridcolor="lightgray",
+                tickfont=dict(size=12, color="black")
+            ),
+            angularaxis=dict(
+                tickfont=dict(size=14, color="black", family="Arial")
+            )
+        ),
+        showlegend=False,
+        title=dict(
+            text="🌟 Ton radar des soft skills",
+            font=dict(size=20, color="black", family="Arial Black"),
+            x=0.5
+        )
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
 
     # Save results to Excel
     df_new = pd.DataFrame([{
@@ -227,16 +252,6 @@ else:
     else:
         df_all = df_new
     df_all.to_excel(file_path, index=False)
-
-    # Download chart
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=180, bbox_inches="tight")
-    st.download_button(
-        "⬇️ Télécharger ton radar (PNG)",
-        data=buf.getvalue(),
-        file_name=f"radar_soft_skills_{st.session_state.info['name'].replace(' ', '_')}.png",
-        mime="image/png",
-    )
 
     if st.button("🔁 Refaire le test"):
         st.session_state.page = -1
