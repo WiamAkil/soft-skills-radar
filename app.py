@@ -1,5 +1,7 @@
 import streamlit as st
 import numpy as np
+import pandas as pd
+import os
 import plotly.graph_objects as go
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
 from reportlab.lib.styles import getSampleStyleSheet
@@ -188,13 +190,14 @@ if st.session_state.page == -1:
     with st.form("userinfo"):
         name = st.text_input("Prénom et Nom")
         email = st.text_input("Adresse e-mail")
+        dept = st.text_input("Équipe / Département (optionnel)")
         start = st.form_submit_button("🚀 Commencer le quiz")
 
         if start:
             if not name or not email:
                 st.error("Merci de remplir au minimum **Nom + Email**.")
             else:
-                st.session_state.info = {"name": name, "email": email}
+                st.session_state.info = {"name": name, "email": email, "dept": dept}
                 st.session_state.page = 0
                 st.rerun()
 
@@ -299,15 +302,7 @@ else:
     fig.write_image(chart_file)
 
     # Generate PDF
-    pdf_file = generate_pdf(
-        st.session_state.info["name"],
-        st.session_state.info["email"],
-        scores,
-        top_skill,
-        emoji,
-        low_skill,
-        chart_file
-    )
+    pdf_file = generate_pdf(st.session_state.info["name"], st.session_state.info["email"], scores, top_skill, emoji, low_skill, chart_file)
     with open(pdf_file, "rb") as f:
         st.download_button("⬇️ Télécharger ton rapport PDF", f, file_name=pdf_file, mime="application/pdf")
 
