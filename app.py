@@ -3,161 +3,169 @@ import numpy as np
 import matplotlib.pyplot as plt
 import io
 
-# ---------- Page setup ----------
-st.set_page_config(page_title="Soft Skills Radar – Fun Quiz", page_icon="🧭", layout="centered")
+# ---------- Configuration de la page ----------
+st.set_page_config(page_title="Quiz Soft Skills Mystère", page_icon="🎭", layout="centered")
 
-SKILLS = ["Empathy", "Critical Thinking", "Adaptability", "Trust", "Emotional Intelligence", "Agentility"]
+# ---------- Soft skills + emojis ----------
+SKILLS = {
+    "Empathie": "🤝",
+    "Pensée critique": "🧐",
+    "Adaptabilité": "🦎",
+    "Confiance": "🔒",
+    "Intelligence émotionnelle": "💖",
+    "Agilité": "⚡"
+}
 
+# ---------- Questions (sans mention de soft skills) ----------
 QUESTIONS = [
     {
         "id": 1,
-        "text": "Your team just crash-landed on Mars 🚀. The oxygen generator is busted. First move?",
+        "text": "🚀 Ton équipe s’écrase sur Mars. Le générateur d’oxygène est HS. Première réaction ?",
         "options": [
-            ("Check in with the crew’s state of mind", "Empathy"),
-            ("Analyze the machine to find weak points", "Critical Thinking"),
-            ("Repurpose other gear to hack a fix", "Adaptability"),
-            ("Crack a calm joke & stabilize the mood", "Emotional Intelligence"),
+            ("Vérifier comment va tout le monde", "Empathie"),
+            ("Analyser la machine pour trouver une faille", "Pensée critique"),
+            ("Réutiliser du matériel pour bricoler un plan B", "Adaptabilité"),
+            ("Faire une blague pour calmer les esprits", "Intelligence émotionnelle"),
         ],
     },
     {
         "id": 2,
-        "text": "A teammate drops a 2 AM cat-typing GIF in chat. You…",
+        "text": "🐱 Un collègue envoie un GIF de chat qui tape au clavier à 2h du matin. Ta réaction ?",
         "options": [
-            ("DM them tomorrow to see if they’re okay", "Empathy"),
-            ("Ask why they’re online at 2AM (pattern?)", "Critical Thinking"),
-            ("Assume time-zone shuffle, keep it light", "Adaptability"),
-            ("Reply with a supportive meme to show care", "Emotional Intelligence"),
+            ("Lui envoyer un message demain pour vérifier s’il va bien", "Empathie"),
+            ("Te demander pourquoi il bosse à 2h du matin", "Pensée critique"),
+            ("Penser que c’est juste un décalage horaire", "Adaptabilité"),
+            ("Répondre avec un mème de soutien", "Intelligence émotionnelle"),
         ],
     },
     {
         "id": 3,
-        "text": "A mysterious locked box appears in a meeting. What’s your move?",
+        "text": "📦 En pleine réunion, quelqu’un pose une boîte fermée à clé sur la table. Que fais-tu ?",
         "options": [
-            ("Ask the room who knows its story", "Trust"),
-            ("Treat it like a puzzle & test hypotheses", "Critical Thinking"),
-            ("If it won’t open, park it and move on", "Adaptability"),
-            ("Nominate it as the team mascot 😂", "Agentility"),
+            ("Demander si quelqu’un connaît son histoire", "Confiance"),
+            ("Essayer de l’ouvrir comme une énigme", "Pensée critique"),
+            ("Accepter qu’elle reste fermée et passer à autre chose", "Adaptabilité"),
+            ("Proposer que ce soit la mascotte de l’équipe 😂", "Agilité"),
         ],
     },
     {
         "id": 4,
-        "text": "Your dream trip is canceled last minute. What now?",
+        "text": "✈️ Ton voyage de rêve est annulé la veille du départ. Réaction ?",
         "options": [
-            ("Rebuild the plan instantly with options B/C", "Adaptability"),
-            ("Check in on others & cheer them up", "Empathy"),
-            ("Research smart alternatives within constraints", "Critical Thinking"),
-            ("Accept the L, manage emotions, and reset", "Emotional Intelligence"),
+            ("Refaire direct un plan B", "Adaptabilité"),
+            ("Vérifier si tes potes sont pas trop déçus", "Empathie"),
+            ("Chercher des alternatives malines", "Pensée critique"),
+            ("Gérer ta frustration et rebondir", "Intelligence émotionnelle"),
         ],
     },
     {
         "id": 5,
-        "text": "You find a baby dragon 🐉 under your desk. Instinct?",
+        "text": "🐉 Tu trouves un bébé dragon sous ton bureau. Première instinct ?",
         "options": [
-            ("Make it feel safe & fed", "Empathy"),
-            ("Observe it carefully before acting", "Critical Thinking"),
-            ("Call the team & align next steps", "Trust"),
-            ("Ride it into stand-up like a boss", "Agentility"),
+            ("Le nourrir et le rassurer", "Empathie"),
+            ("L’observer avant d’agir", "Pensée critique"),
+            ("Appeler ton équipe pour décider ensemble", "Confiance"),
+            ("Arriver à la prochaine réunion en le montant fièrement", "Agilité"),
         ],
     },
     {
         "id": 6,
-        "text": "Dropped into a project outside your expertise. Mindset?",
+        "text": "📊 On te parachute sur un projet totalement hors de ton expertise. Ton mindset ?",
         "options": [
-            ("Volunteer for a tiny piece & learn fast", "Agentility"),
-            ("Set a 1-week learning sprint & adapt", "Adaptability"),
-            ("Pair with a pro & set clear expectations", "Trust"),
-            ("Acknowledge nerves, set check-ins", "Emotional Intelligence"),
+            ("Prendre une petite partie et apprendre vite", "Agilité"),
+            ("Monter un sprint d’apprentissage pour t’adapter", "Adaptabilité"),
+            ("Bosser en binôme avec un expert", "Confiance"),
+            ("Reconnaître ton stress mais organiser des check-ins", "Intelligence émotionnelle"),
         ],
     },
     {
         "id": 7,
-        "text": "A teammate shares confidential doubts about the project.",
+        "text": "🤐 Un collègue te confie ses doutes confidentiels sur le projet. Que fais-tu ?",
         "options": [
-            ("Keep it private & help craft a plan", "Trust"),
-            ("Give them space today, follow up tomorrow", "Empathy"),
-            ("Map root causes before reacting", "Critical Thinking"),
-            ("Propose a small experiment to test a fix", "Agentility"),
+            ("Garder ça pour toi et l’aider à trouver un plan", "Confiance"),
+            ("Lui laisser de l’espace et revenir demain", "Empathie"),
+            ("Chercher la racine du problème avant de réagir", "Pensée critique"),
+            ("Proposer un mini-test rapide pour valider une piste", "Agilité"),
         ],
     },
     {
         "id": 8,
-        "text": "You get unexpected negative feedback. First reaction?",
+        "text": "📉 Tu reçois un feedback négatif inattendu. Ta première réaction ?",
         "options": [
-            ("Thank them, ask for specifics, breathe", "Emotional Intelligence"),
-            ("Extract signals from noise with questions", "Critical Thinking"),
-            ("Adjust next sprint plan accordingly", "Adaptability"),
-            ("Reconfirm commitments & reliability", "Trust"),
+            ("Remercier et demander des détails", "Intelligence émotionnelle"),
+            ("Séparer le bruit des signaux utiles", "Pensée critique"),
+            ("Adapter ton plan pour la prochaine fois", "Adaptabilité"),
+            ("Rassurer sur ton engagement et ta fiabilité", "Confiance"),
         ],
     },
     {
         "id": 9,
-        "text": "Scope changes last minute (again). Your move?",
+        "text": "🔄 Changement de scope à la dernière minute (encore 😅). Ton move ?",
         "options": [
-            ("Re-prioritize deliverables quickly", "Adaptability"),
-            ("Re-check assumptions & constraints", "Critical Thinking"),
-            ("Cut a micro-plan & charge ahead", "Agentility"),
-            ("Align expectations & keep promises visible", "Trust"),
+            ("Reprioriser vite ce qui est faisable", "Adaptabilité"),
+            ("Revalider les hypothèses et contraintes", "Pensée critique"),
+            ("Lancer un micro-plan pour avancer quand même", "Agilité"),
+            ("Clarifier les attentes avec tout le monde", "Confiance"),
         ],
     },
     {
         "id": 10,
-        "text": "You’re leading a sprint; someone’s falling behind. You…",
+        "text": "🏃 Tu mènes un sprint et un membre galère à suivre. Réaction ?",
         "options": [
-            ("Check in privately & listen", "Empathy"),
-            ("Rebalance workload & unblock", "Agentility"),
-            ("Make expectations explicit & mutual", "Trust"),
-            ("Trace bottlenecks in the process", "Critical Thinking"),
+            ("Vérifier en privé et écouter", "Empathie"),
+            ("Rééquilibrer les tâches pour l’aider", "Agilité"),
+            ("Reposer clairement les attentes mutuelles", "Confiance"),
+            ("Identifier les goulots d’étranglement", "Pensée critique"),
         ],
     },
 ]
 
-# Count how many times each skill appears (for scaling to 0–5)
-skill_occurrences = {s: 0 for s in SKILLS}
-for q in QUESTIONS:
-    for _, skill in q["options"]:
-        skill_occurrences[skill] += 1
-
-# ---------- Session state ----------
+# ---------- Initialisation ----------
 if "page" not in st.session_state:
-    st.session_state.page = 0  # index into QUESTIONS
+    st.session_state.page = 0
 if "answers" not in st.session_state:
-    st.session_state.answers = {}  # qid -> option text
+    st.session_state.answers = {}
 if "name" not in st.session_state:
     st.session_state.name = ""
 
 # ---------- Sidebar ----------
 with st.sidebar:
-    st.header("About")
-    st.write("10 quick scenarios → instant **soft skills radar** (0–5). No trick questions.")
-    st.text_input("Your name (optional)", key="name")
+    st.header("Quiz mystère 🎭")
+    st.write("Réponds instinctivement aux scénarios. À la fin, découvre ton **radar des soft skills**.")
+    st.text_input("Ton prénom ou pseudo (optionnel)", key="name")
     st.progress(st.session_state.page / max(1, len(QUESTIONS)))
 
-# ---------- Header ----------
-st.title("Soft Skills Radar – Fun Quiz 🧭")
+# ---------- Corps principal ----------
+st.title("Quiz Soft Skills Mystère 🌌")
 
-# ---------- Quiz flow (one question per page) ----------
 if st.session_state.page < len(QUESTIONS):
     q = QUESTIONS[st.session_state.page]
-    st.subheader(f"Question {st.session_state.page+1} of {len(QUESTIONS)}")
+    st.subheader(f"Question {st.session_state.page+1} / {len(QUESTIONS)}")
     st.write(q["text"])
-    if q["id"] in st.session_state.answers:
-        st.caption(f"Previously chose: {st.session_state.answers[q['id']]} (you can change)")
 
-    cols = st.columns(2)
-    clicked = False
     for i, (opt_text, _skill) in enumerate(q["options"]):
-        if cols[i % 2].button(opt_text, use_container_width=True, key=f"opt-{q['id']}-{i}"):
+        if st.button(opt_text, key=f"q{q['id']}-opt{i}", use_container_width=True):
             st.session_state.answers[q["id"]] = opt_text
             st.session_state.page += 1
-            clicked = True
             st.rerun()
-    st.divider()
-    st.button("⬅️ Back", disabled=(st.session_state.page == 0),
-              on_click=lambda: st.session_state.update(page=st.session_state.page - 1))
+
+    if st.session_state.page > 0:
+        if st.button("⬅️ Revenir à la question précédente"):
+            st.session_state.page -= 1
+            st.rerun()
+
 else:
-    # ---------- Results ----------
+    # ---------- Résultats ----------
+    st.success("✨ Résultats : voici ton radar des soft skills !")
+
+    # Compter les réponses
     raw_counts = {s: 0 for s in SKILLS}
+    skill_occurrences = {s: 0 for s in SKILLS}
+
     for q in QUESTIONS:
+        for _, skill in q["options"]:
+            skill_occurrences[skill] += 1
+
         chosen = st.session_state.answers.get(q["id"])
         if chosen:
             for opt_text, skill in q["options"]:
@@ -169,27 +177,25 @@ else:
         for s in SKILLS
     }
 
-    st.success("All done! Here’s your profile 👇")
-    col1, col2 = st.columns([1, 1])
+    col1, col2 = st.columns([1,1])
 
     with col1:
-        st.write("### Your Scores (0–5)")
+        st.write("### Tes scores (0–5)")
         st.json(scores)
 
     # Radar chart
-    labels = SKILLS
-    vals = [scores[s] for s in labels]
+    labels = [f"{emoji} {s}" for s, emoji in SKILLS.items()]
+    vals = [scores[s] for s in SKILLS]
     vals += vals[:1]
     angles = np.linspace(0, 2 * np.pi, len(labels) + 1)
 
-    fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
-    ax.plot(angles, vals, marker="o", linewidth=2)
-    ax.fill(angles, vals, alpha=0.25)
+    fig, ax = plt.subplots(figsize=(7,7), subplot_kw=dict(polar=True))
+    ax.plot(angles, vals, marker="o", linewidth=3, color="#FF6F61")
+    ax.fill(angles, vals, color="#FF6F61", alpha=0.3)
     ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(labels)
-    ax.set_ylim(0, 5)
-    title = f"{(st.session_state.name or 'Your')} Soft Skills Radar"
-    ax.set_title(title, pad=20)
+    ax.set_xticklabels(labels, fontsize=12, weight="bold")
+    ax.set_ylim(0,5)
+    ax.set_title(f"Radar des soft skills de {(st.session_state.name or 'toi')} 🌟", pad=20, fontsize=16, weight="bold")
 
     with col2:
         st.pyplot(fig, clear_figure=True)
@@ -197,11 +203,14 @@ else:
     buf = io.BytesIO()
     fig.savefig(buf, format="png", dpi=180, bbox_inches="tight")
     st.download_button(
-        "⬇️ Download your radar (PNG)",
+        "⬇️ Télécharger ton radar (PNG)",
         data=buf.getvalue(),
-        file_name=f"{(st.session_state.name or 'soft_skills').replace(' ','_').lower()}_radar.png",
+        file_name=f"radar_soft_skills_{(st.session_state.name or 'profil')}.png",
         mime="image/png",
     )
 
-    st.button("🔁 Restart test", type="primary",
-              on_click=lambda: st.session_state.update(page=0, answers={}, name=st.session_state.name))
+    if st.button("🔁 Refaire le test"):
+        st.session_state.page = 0
+        st.session_state.answers = {}
+        st.rerun()
+
