@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import io
 
 # ---------- Configuration de la page ----------
-st.set_page_config(page_title="Quiz Soft Skills Mystère", page_icon="🎭", layout="centered")
+st.set_page_config(page_title="Quiz Soft Skills", page_icon="🎭", layout="centered")
 
 # ---------- Soft skills + emojis ----------
 SKILLS = {
