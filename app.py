@@ -1,8 +1,5 @@
 import streamlit as st
 import numpy as np
-import pandas as pd
-import os
-import io
 import plotly.graph_objects as go
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
 from reportlab.lib.styles import getSampleStyleSheet
@@ -21,7 +18,7 @@ SKILLS = {
     "Agilité": "⚡"
 }
 
-# Explanation texts for PDF
+# Explanations for strengths
 EXPLANATIONS = {
     "Empathie": "Tu comprends les autres et sais te mettre à leur place.",
     "Pensée critique": "Tu analyses, questionnes et prends des décisions rationnelles.",
@@ -29,6 +26,16 @@ EXPLANATIONS = {
     "Confiance": "On peut compter sur toi, tu inspires la fiabilité.",
     "Intelligence émotionnelle": "Tu gères tes émotions et celles des autres avec finesse.",
     "Agilité": "Tu agis vite, tu prends des initiatives et tu avances."
+}
+
+# Tips for improvement
+TIPS = {
+    "Empathie": "Prends du temps pour écouter activement et poser des questions ouvertes.",
+    "Pensée critique": "Entraîne-toi à questionner les hypothèses et chercher des sources fiables.",
+    "Adaptabilité": "Expose-toi volontairement à des situations nouvelles pour renforcer ta flexibilité.",
+    "Confiance": "Fixe-toi des petits défis pour bâtir une fiabilité progressive.",
+    "Intelligence émotionnelle": "Travaille ta conscience émotionnelle avec des exercices de respiration.",
+    "Agilité": "Apprends à tester rapidement des idées sans viser la perfection."
 }
 
 # ---------- Questions ----------
@@ -144,7 +151,7 @@ if "info" not in st.session_state:
     st.session_state.info = {}
 
 # ---------- PDF Generator ----------
-def generate_pdf(name, email, scores, top_skill, emoji, chart_file):
+def generate_pdf(name, email, scores, top_skill, emoji, low_skill, chart_file):
     file_path = f"report_{name.replace(' ', '_')}.pdf"
     doc = SimpleDocTemplate(file_path, pagesize=A4)
     styles = getSampleStyleSheet()
@@ -156,9 +163,14 @@ def generate_pdf(name, email, scores, top_skill, emoji, chart_file):
     story.append(Paragraph(f"Email: {email}", styles['Normal']))
     story.append(Spacer(1, 12))
 
+    # Strength
     story.append(Paragraph(f"🏆 Ton atout majeur: {emoji} {top_skill}", styles['Heading2']))
-    story.append(Spacer(1, 6))
     story.append(Paragraph(EXPLANATIONS[top_skill], styles['Normal']))
+    story.append(Spacer(1, 12))
+
+    # Weakness tip
+    story.append(Paragraph(f"💡 Piste d’amélioration: {low_skill}", styles['Heading2']))
+    story.append(Paragraph(TIPS[low_skill], styles['Normal']))
     story.append(Spacer(1, 12))
 
     # Radar chart image
@@ -176,14 +188,13 @@ if st.session_state.page == -1:
     with st.form("userinfo"):
         name = st.text_input("Prénom et Nom")
         email = st.text_input("Adresse e-mail")
-        dept = st.text_input("Équipe / Département (optionnel)")
         start = st.form_submit_button("🚀 Commencer le quiz")
 
         if start:
             if not name or not email:
                 st.error("Merci de remplir au minimum **Nom + Email**.")
             else:
-                st.session_state.info = {"name": name, "email": email, "dept": dept}
+                st.session_state.info = {"name": name, "email": email}
                 st.session_state.page = 0
                 st.rerun()
 
@@ -225,8 +236,9 @@ else:
 
     scores = {s: round(100 * raw_counts[s] / total_per_skill[s], 1) if total_per_skill[s] else 0 for s in SKILLS}
 
-    # Dominant skill
+    # Top and low skills
     top_skill = max(scores, key=scores.get)
+    low_skill = min(scores, key=scores.get)
     emoji = SKILLS[top_skill]
 
     st.markdown(
@@ -234,7 +246,7 @@ else:
         f"Bravo {st.session_state.info['name']} — voici ton profil 👇"
     )
 
-    # ---------- Multi-Colored Radar ----------
+    # ---------- Fancy Multi-Colored Radar ----------
     colors = {
         "Empathie": "#FF6F61",
         "Pensée critique": "#6A5ACD",
@@ -249,30 +261,35 @@ else:
     vals += vals[:1]
 
     fig = go.Figure()
+
     fig.add_trace(go.Scatterpolar(
         r=vals,
         theta=labels + [labels[0]],
         fill='toself',
-        line=dict(color='black', width=2),
-        fillcolor='rgba(255, 182, 193, 0.3)'
+        line=dict(color='black', width=3),
+        fillcolor='rgba(255, 182, 193, 0.4)',
+        name="Profil global"
     ))
 
     for skill, val in scores.items():
         fig.add_trace(go.Scatterpolar(
             r=[val],
             theta=[skill],
-            mode="markers",
-            marker=dict(size=14, color=colors[skill]),
+            mode="markers+text",
+            marker=dict(size=16, color=colors[skill], line=dict(width=2, color="black")),
+            text=[f"{val}%"],
+            textposition="top center",
             name=f"{skill}: {val}%"
         ))
 
+    max_val = max(scores.values()) if max(scores.values()) > 0 else 100
     fig.update_layout(
         polar=dict(
-            radialaxis=dict(visible=True, range=[0, 100]),
-            angularaxis=dict(tickfont=dict(size=13))
+            radialaxis=dict(visible=True, range=[0, max_val + 10]),
+            angularaxis=dict(tickfont=dict(size=14))
         ),
         showlegend=True,
-        title="🌟 Ton radar multicolore des soft skills"
+        title="🌟 Ton radar"
     )
 
     st.plotly_chart(fig, use_container_width=True)
@@ -282,7 +299,15 @@ else:
     fig.write_image(chart_file)
 
     # Generate PDF
-    pdf_file = generate_pdf(st.session_state.info["name"], st.session_state.info["email"], scores, top_skill, emoji, chart_file)
+    pdf_file = generate_pdf(
+        st.session_state.info["name"],
+        st.session_state.info["email"],
+        scores,
+        top_skill,
+        emoji,
+        low_skill,
+        chart_file
+    )
     with open(pdf_file, "rb") as f:
         st.download_button("⬇️ Télécharger ton rapport PDF", f, file_name=pdf_file, mime="application/pdf")
 
