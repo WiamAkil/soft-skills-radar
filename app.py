@@ -2,7 +2,6 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import os
-import io
 import plotly.graph_objects as go
 
 # ---------- Page setup ----------
@@ -124,7 +123,7 @@ QUESTIONS = [
 
 # ---------- State ----------
 if "page" not in st.session_state:
-    st.session_state.page = -1  # -1 = welcome page
+    st.session_state.page = -1
 if "answers" not in st.session_state:
     st.session_state.answers = {}
 if "info" not in st.session_state:
@@ -152,6 +151,11 @@ if st.session_state.page == -1:
 # ---------- Questions ----------
 elif st.session_state.page < len(QUESTIONS):
     q = QUESTIONS[st.session_state.page]
+
+    # Progress bar
+    progress = (st.session_state.page) / len(QUESTIONS)
+    st.progress(progress)
+
     st.subheader(f"Question {st.session_state.page+1} / {len(QUESTIONS)}")
     st.write(q["text"])
 
@@ -201,6 +205,8 @@ else:
     vals = [scores[s] for s in labels]
     vals += vals[:1]
 
+    colors = ["#FF6F61", "#6A5ACD", "#20B2AA", "#FFD700", "#FF69B4", "#00CED1"]
+
     fig = go.Figure()
 
     fig.add_trace(go.Scatterpolar(
@@ -208,10 +214,11 @@ else:
         theta=labels + [labels[0]],
         fill='toself',
         name='Profil',
-        line=dict(color='firebrick', width=3),
-        fillcolor='rgba(255, 111, 97, 0.4)'
+        line=dict(color="black", width=2),
+        fillcolor='rgba(255, 105, 180, 0.3)'
     ))
 
+    # Customize layout
     fig.update_layout(
         polar=dict(
             bgcolor="#f9f9f9",
@@ -224,16 +231,25 @@ else:
                 tickfont=dict(size=12, color="black")
             ),
             angularaxis=dict(
-                tickfont=dict(size=14, color="black", family="Arial")
+                tickfont=dict(size=14, color="black")
             )
         ),
         showlegend=False,
         title=dict(
             text="🌟 Ton radar des soft skills",
-            font=dict(size=20, color="black", family="Arial Black"),
+            font=dict(size=22, color="black", family="Arial Black"),
             x=0.5
         )
     )
+
+    # Color labels individually
+    for i, label in enumerate(labels):
+        fig.add_annotation(
+            x=0, y=0,
+            text=f"<b><span style='color:{colors[i]}'>{label}</span></b>",
+            showarrow=False,
+            xref="paper", yref="paper"
+        )
 
     st.plotly_chart(fig, use_container_width=True)
 
@@ -258,3 +274,4 @@ else:
         st.session_state.answers = {}
         st.session_state.info = {}
         st.rerun()
+
